@@ -1,0 +1,414 @@
+---
+title: "melanoma_diaviou"
+author: "Anastasios Vlaikidis"
+date: "7/22/2021"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+
+
+### Να φορτώσετε τα πακέτα boot, ggplot2, GGally, dplyr, caret και rpart.plot.
+### Libraries
+```{r}
+library(boot)
+library(ggplot2)
+library(GGally)
+library(dplyr)
+library(caret)
+library(rpart.plot)
+```
+
+
+### Να ανοίξετε την βοήθεια για να διαβάσετε την περιγραφή του πλαισίου δεδομένων melanoma.
+### Load melanoma
+```{r}
+original_melanoma <- boot::melanoma
+melanoma <- original_melanoma
+help("melanoma")
+```
+
+
+### Να τυπώσετε τις έξι πρώτες γραμμές του πλαισίου δεδομένων melanoma.
+### See the first six lines 
+```{r}
+head(melanoma,n=6)
+```
+
+
+### Να τυπώσετε την δομή του πλαισίου δεδομένων melanoma.
+### Structure of melanoma
+```{r}
+str(melanoma)
+```
+
+
+### Να τυπώσετε τις συνοπτικές πληροφορίες του πλαισίου δεδομένων melanoma.
+### Summary of melanoma
+```{r}
+summary(melanoma)
+```
+
+
+### 1.Να αντικαταστήσετε τις τιμές της μεταβλητής status στο πλαίσιο δεδομένων melanoma, ώστε όταν η αρχική τιμή της μεταβλητής status είναι ίση με 1,να παίρνει την τιμή "not successful" και σε κάθε άλλη περίπτωση "successful".
+```{r}
+melanoma$status <- ifelse(melanoma$status == 1,"not successful","succesfull")
+```
+
+
+
+### 2.Να μετατρέψετε την μεταβλητή status σε factor.
+```{r}
+melanoma$status <- factor(melanoma$status)
+```
+
+
+### 3.Να μετατρέψετε την μεταβλητή sex σε factor, ορίζοντας ως επίπεδα για τα 0 και 1, τα "male" και "female" αντίστοιχα.
+```{r}
+melanoma$sex <- factor(melanoma$sex,
+                       levels = c("0","1"),
+                       labels = c("male","female"))
+```
+
+
+### 4.Να μετατρέψετε την μεταβλητή ulcer σε factor ορίζοντας ως επίπεδα για τα 0 και 1, τα "absent" και "present" αντίστοιχα.
+```{r}
+melanoma$ulcer <- factor(melanoma$ulcer,
+                         levels = c("0","1"),
+                         labels = c("absent","present"))
+```
+
+
+
+### 5.Να δημιουργήσετε τον πίνακα συχνοτήτων της μεταβλητής ulcer (tab_ulcer). Πόσοι ασθενείς είχαν έλκος; Πόσοι ασθενείς δεν είχαν έλκος; Να αποθηκεύσετε τα αποτελέσματα στις μεταβλητές count_present_ulcer και count_absent_ulcer αντίστοιχα.
+```{r}
+tab_ulcer <- count(melanoma,ulcer)
+count_present_ulcer <- tab_ulcer[2,2]
+count_absent_ulcer <- tab_ulcer[1,2]
+```
+
+
+
+### 6.Να δημιουργήσετε τον πίνακα σχετικών συχνοτήτων της μεταβλητής ulcer (rel_freq_tab_ulcer). Ποιες είναι οι σχετικές συχνότητες των ασθενών με έλκος και ποιες των ασθενών που δεν έχουν; Να αποθηκεύσετε τα αποτελέσματα στις μεταβλητές rel_freq_present_ulcer και rel_freq_absent_ulcer αντίστοιχα.
+```{r}
+n = nrow(melanoma)
+rel_freq_tab_ulcer  <- tab_ulcer[,2]/n
+rel_freq_present_ulcer <- rel_freq_tab_ulcer[2]
+rel_freq_absent_ulcer <- rel_freq_tab_ulcer[1]
+```
+
+
+
+### 7.Να δημιουργήσετε τον πίνακα συχνοτήτων της μεταβλητής sex (tab_sex). Πόσοι είναι οι άντρες; Πόσες οι γυναίκες; Να αποθηκεύσετε τα αποτελέσματα στις μεταβλητές count_males και count_females αντίστοιχα.
+```{r}
+tab_sex <- count(melanoma,sex)
+count_males <- tab_sex[1,2]
+count_females <- tab_sex[2,2]
+```
+
+
+
+
+
+### 8.Να δημιουργήσετε τον πίνακα σχετικών συχνοτήτων της μεταβλητής sex (rel_freq_tab_sex). Ποιες είναι οι σχετικές συχνότητες των αντρών και ποιες των γυναικών; Να αποθηκεύσετε τα αποτελέσματα στις μεταβλητές rel_freq_males και rel_freq_females αντίστοιχα.
+```{r}
+n = nrow(melanoma)
+rel_freq_tab_sex <- tab_sex[,2]/n
+rel_freq_males <- rel_freq_tab_sex[1]
+rel_freq_females <- rel_freq_tab_sex[2]
+```
+
+
+### 9.Να δημιουργήσετε το ραβδόγραμμα συχνοτήτων για τη μεταβλητή ulcer, χρησιμοποιώντας τις κατάλληλες εντολές του πακέτου ggplot2.Να αποθηκεύσετε το γράφημα στην μεταβλητή plot_1.
+```{r}
+common_theme <- theme(plot.title = element_text(hjust = 0.5, 
+                                                 face = "bold"))
+
+plot_1 <- 
+ggplot(data = melanoma, 
+      aes(x = ulcer, 
+          y = prop.table(stat(count)), 
+       fill = ulcer,
+      label = scales::percent(prop.table(stat(count)))))+
+  
+      xlab("ulcer")+
+      ylab("Percentage")+ 
+  
+   geom_bar(position = "dodge")+ 
+   geom_text(stat = 'count',position = position_dodge(.9), 
+            vjust = -0.5, 
+             size = 3)+
+  
+   scale_x_discrete(labels = c("absent","present"))+
+   scale_y_continuous(labels = scales::percent)+
+       
+    ggtitle("Distribution of ulcer")+
+    common_theme
+```
+
+
+
+### 10.Να χρησιμοποιήσετε την εντολή ggpairs στο πλαίσιο δεδομένων melanoma χρησιμοποιώντας όλες τις μεταβλητές. Να αποθηκεύσετε το γράφημα στην μεταβλητή plot_2.
+```{r}
+plot_2 <- ggpairs(original_melanoma)
+```
+
+
+
+
+### 11.Να υπολογίσετε τη μέση τιμή, τη διάμεσο, την τυπική απόκλιση, το ενδοτεταρτημοριακό εύρος και το πλήθος των παρατηρήσεων της μεταβλητής time, για τις κατηγορίες της ulcer. Να αποθηκεύσετε τα αποτελέσματα στο πλαίσιο δεδομένων data_statistics.
+```{r}
+melanoma %>% 
+  select(c("time","ulcer")) -> df
+
+df %>% filter(ulcer=="present") %>% select(time) -> d1
+df %>% filter(ulcer== "absent") %>% select(time) -> d2
+
+m <- matrix(0,ncol = 5,nrow = 2)
+data_statistics <-as.data.frame(m,row.names = c("time_present","time_absent"))
+colnames(data_statistics) <- c("mean","median","sd","IQR","n")
+data_statistics[,1] <- c(mean(d1$time),mean(d2$time))
+data_statistics[,2] <- c(median(d1$time),median(d2$time))
+data_statistics[,3] <- c(sd(d1$time),sd(d2$time))
+data_statistics[,4] <- c(IQR(d1$time),IQR(d2$time))
+data_statistics[,5] <- c(nrow(d1),nrow(d2))
+```
+
+
+
+
+### 12.Να κατασκευάσετε το θηκόγραμμα της μεταβλητής time ως προς την μεταβλητή ulcer, χρησιμοποιώντας τις κατάλληλες εντολές του πακέτου ggplot2.Να αποθηκεύσετε το γράφημα στην μεταβλητή plot_3.
+```{r}
+plot_3 <-
+  ggplot( data = melanoma,
+         aes(x = ulcer,
+             y = time,
+          fill = ulcer))+
+  geom_boxplot()
+```
+
+
+
+### 13.Να δημιουργήσετε σε πάνελ τα ιστογράμματα της μεταβλητής time ως προς την μεταβλητή sex (στις γραμμές του πάνελ) και την ulcer (στις στήλες του πάνελ). Να χρησιμοποιήσετε τις κατάλληλες εντολές του πακέτου ggplot2 και να αποθηκεύσετε το γράφημα στην μεταβλητή plot_4. Να ορίσετε επιπλέον ως τίτλο γραφήματος την παρακάτω λεζάντα: "Survival time in days since the operation by gender and indicator of ulceration"
+```{r}
+melanoma %>% select(time,sex,ulcer) -> temp
+temp %>% filter(sex=="male" & ulcer=="present") -> MalePresent
+temp %>% filter(sex=="male" & ulcer=="absent") ->  MaleAbsent
+
+temp %>% filter(sex=="female" & ulcer=="present") -> FemalePresent
+temp %>% filter(sex=="female" & ulcer=="absent") ->  FemaleAbsent
+
+p1 <- 
+  ggplot(data = MalePresent,
+        aes(x = time))+
+  geom_histogram(bins = 15,color ="red")+
+ggtitle("Histogram of time filtered by sex = male and ulcer = present")
+
+p2 <- 
+  ggplot(data = MaleAbsent,
+        aes(x = time))+
+  geom_histogram(bins = 15,color ="red")+
+ggtitle("Histogram of time filtered by sex = male and ulcer = absent")
+
+p3 <-
+  ggplot(data = FemalePresent,
+        aes(x = time))+
+  geom_histogram(bins = 15,color ="red")+
+ggtitle("Histogram of time filtered by sex = female and ulcer = present")
+
+p4 <- 
+  ggplot(data = FemaleAbsent,
+        aes(x = time))+
+  geom_histogram(bins = 15,color ="red")+
+ggtitle("Histogram of time filtered by sex = female and ulcer = absent")
+
+
+text <- 
+  "Survival time in days since the operation by gender and indicator of ulceration"
+
+tgrob <- ggpubr::text_grob(text,size = 15)
+plot_0 <- ggpubr::as_ggplot(tgrob) + theme(plot.margin = margin(0,3,0,0, "cm"))
+
+plot_4 <-
+  ggpubr::ggarrange(plot_0,NULL,
+                    p1,p2,
+                    p3,p4,
+                  ncol = 2,
+                  nrow = 3)
+```
+
+
+
+
+### 14.Να ελέγξετε με τον κατάλληλο μη παραμετρικό έλεγχο εάν το πάχος του όγκου (thickness) διαφέρει στατιστικώς σημαντικά ως προς το φύλο (sex). Να αποθηκεύσετε το αποτέλεσμα στην μεταβλητή hypothesis_test.
+```{r}
+melanoma %>% 
+  select(thickness,sex) -> ThicknSex
+
+ThicknSex %>%
+  filter(sex=="male") -> MaleThickness
+
+ThicknSex %>%
+  filter(sex=="female") -> FemaleThickness
+
+hypothesis_test <- 
+  wilcox.test(x = MaleThickness[,1],
+              y = FemaleThickness[,1],
+    alternative = "two.sided",
+         paired = FALSE,
+     conf.level = 0.95)
+```
+
+
+
+### 15.Να υπολογίσετε τον συντελεστή συσχέτισης της μεταβλητής thickness και time. Να αποθηκεύσετε το αποτέλεσμα στην μεταβλητή tt_correlation.
+```{r}
+tt_correlation <- cor(melanoma$thickness,melanoma$time)
+```
+
+
+
+### 16.Να κατασκευάσετε το διάγραμμα διασποράς της μεταβλητής thickness (στον άξονα y) και της μεταβλητής time (στον άξονα x). Να αποθηκεύσετε το αποτέλεσμα στην μεταβλητή tt_scatter.
+```{r}
+tt_scatter <-
+  ggplot(data = melanoma,
+         aes(x = time,
+             y = thickness))+
+  geom_point()
+```
+
+
+
+### 17.Να δημιουργήσετε έναν δείκτη ο οποίος θα επιλέγει τυχαία το 75% των παρατηρήσεων από το πλαίσιο δεδομένων melanoma για τα δεδομένα εκπαίδευσης/ελέγχου, χρησιμοποιώντας την εντολή sample.
+```{r}
+seed <- 123
+set.seed(seed)
+
+
+idx <-sample(nrow(melanoma), 
+             nrow(melanoma)*0.75,
+             replace = F)
+```
+
+
+
+### 18.Να δημιουργήσετε τα δεδομένα εκπαίδευσης σύμφωνα με τον δείκτη i.
+```{r}
+daTrain <- melanoma[idx,]
+```
+
+
+
+### 19.Να δημιουργήσετε τα δεδομένα ελέγχου σύμφωνα με τον δείκτη i.
+```{r}
+daTest <- melanoma[-idx,]
+```
+
+
+
+### 20.Να χρησιμοποιήσετε την εντολη trainControl στην οποία θα καθορίσετε την μέθοδο k-fold cross validation ως μέθοδο επικύρωσης με k = 10.
+```{r}
+ctrl <- trainControl( method  = "cv",
+                      number  = 10)
+```
+
+
+
+### 21.Να δημιουργήσετε το μοντέλο λογιστικής παλινδρόμησης (glm_model) της μεταβλητής status συμπεριλαμβάνοντας τις μεταβλητές age, year, thickness και ulcer χρησιμοποιώντας τα δεδομένα εκπαίδευσης. Η δημιουργία του μοντέλου να γίνει μέσω της εντολής train του πακέτου caret και να ορίσετε ως πλάνο εκπαίδευσης το πλάνο της train.control.
+```{r}
+glm_model <- 
+          train(status~.-time-sex,
+                data = daTrain,
+              method = "glm",
+              family = "binomial",
+           trControl = ctrl)
+```
+
+
+
+
+
+### 22.Να αποθηκεύσετε στην μεταβλητή glm_coefficients τους συντελεστές του τελικού μοντέλου που χρησιμοποιήθηκαν.
+```{r}
+glm_coefficients <- 
+  glm_model$coefnames
+```
+
+
+
+
+### 23.Να αποθηκεύσετε στην παράμετρο glm_info το summary του τελικού μοντέλου.
+```{r}
+glm_info <- summary(glm_model$finalModel)
+```
+
+
+
+
+
+### 24.Να αποθηκεύσετε στην μεταβλητή aic την τιμή του Κριτήριου Πληροφορίας Akaike-AIC του μοντέλου χρησιμοποιώντας το προηγούμενο ερώτημα.
+```{r}
+aic <- glm_info$aic
+```
+
+
+
+
+### 25.Να εκτιμήσετε την κατάσταση των ασθενών στο τέλος της έρευνας (status) στα δεδομένα ελέγχου χρησιμοποιώντας το μοντέλο glm_model και να αποθηκεύσετε τα αποτελέσματα στην μεταβλητή glm_predictions.
+```{r}
+glm_predictions <- predict(glm_model,newdata = daTest)
+```
+
+
+
+
+### 26.Να χρησιμοποιήσετε την εντολή confusionMatrix του πακέτου caret για να δημιουργήσετε τον πίνακα σύγχυσης glm_confusion_matrix των εκτιμήσεων.
+```{r}
+glm_confusion_matrix <- 
+  confusionMatrix(glm_predictions,daTest$status)
+```
+
+
+
+
+### 27.Να δημιουργήσετε το δέντρο παλινδρόμησης για το πάχος του όγκου (thickness), συμπεριλαμβάνοντας όλες τις μεταβλητές των δεδομένων.Να χρησιμοποιήσετε την εντολή train του πακέτου caret και πλάνο εκπαίδευσης το train.control. Να δοκιμάσετε 25 τιμές κόστους πολυπλοκότητας (tuneLength). Να αποθηκεύσετε τα αποτελέσματα στην μεταβλητή tree_model.
+```{r,warning=FALSE}
+tree_model <- train(thickness~.,
+                    data = daTrain,
+                  method = "rpart",
+               trControl = ctrl,
+              tuneLength = 25)
+```
+
+
+
+
+### 28.Να αποθηκεύσετε το βέλτιστο μοντέλο στην μεταβλητή tree_finalModel.
+```{r}
+tree_finalModel <- tree_model$finalModel
+```
+
+
+
+
+### 29.Να οπτικοποιήσετε το δέντρο παλινδρόμησης. Να αποθηκεύσετε το γράφημα στην μεταβλητή tree_plot.
+```{r}
+tree_plot <- rpart.plot(tree_finalModel)
+```
+
+
+
+
+### 30.Να χρησιμοποιήσετε το μοντέλο tree_model για να εκτιμήσετε το πάχος του όγκου (thickness) στα δεδομένα ελέγχου. Να αποθηκεύσετε τα αποτελέσματα στην μεταβλητή tree_predictions.
+```{r}
+tree_predictions <- predict(tree_model,newdata = daTest)
+```
+
+
+
+### 31.Τέλος, να υπολογίσετε τη ρίζα του μέσου τετραγωνικού σφάλματος για τη μεταβλητή thickness και να αποθηκεύσετε το αποτέλεσμα στην μεταβλητή tree_rmse.
+```{r}
+tree_rmse <- RMSE(tree_predictions,daTest$thickness)
+```
