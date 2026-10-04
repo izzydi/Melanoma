@@ -154,11 +154,11 @@ glm_confusion
 
 ## Regression tree for tumour thickness
 
-The regression example uses the original predictors to estimate tumour thickness. The target is excluded from the predictor matrix to avoid a direct target duplicate.
+This secondary example predicts tumour thickness only from variables available at or near baseline (`sex`, `age`, `year`, `ulcer`). Follow-up time and outcome status are deliberately excluded because they occur after the tumour measurement and would create temporal/post-outcome leakage in a predictive framing.
 
 ```{r}
 regression_data <- melanoma %>%
-  select(thickness, time, status, sex, age, year, ulcer)
+  select(thickness, sex, age, year, ulcer)
 
 set.seed(1821)
 reg_index <- createDataPartition(
