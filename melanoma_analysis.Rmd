@@ -1,0 +1,194 @@
+---
+title: "Melanoma Statistical Analysis in R"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(boot)
+library(dplyr)
+library(ggplot2)
+library(caret)
+library(rpart.plot)
+```
+
+## Data preparation
+
+The project uses `boot::melanoma`, so no external data file is required.
+
+```{r}
+set.seed(1821)
+
+melanoma <- boot::melanoma %>%
+  mutate(
+    sex = factor(sex, levels = c(0, 1), labels = c("male", "female")),
+    ulcer = factor(ulcer, levels = c(0, 1), labels = c("absent", "present")),
+    # In boot::melanoma, status 1 denotes death from melanoma.
+    melanoma_death = factor(
+      if_else(status == 1, "melanoma_death", "other_or_alive"),
+      levels = c("melanoma_death", "other_or_alive")
+    )
+  )
+
+str(melanoma)
+summary(melanoma)
+```
+
+## Descriptive analysis
+
+```{r}
+melanoma %>%
+  count(ulcer) %>%
+  mutate(proportion = n / sum(n))
+```
+
+```{r}
+melanoma %>%
+  group_by(ulcer) %>%
+  summarise(
+    mean_time = mean(time, na.rm = TRUE),
+    median_time = median(time, na.rm = TRUE),
+    sd_time = sd(time, na.rm = TRUE),
+    iqr_time = IQR(time, na.rm = TRUE),
+    n = n(),
+    .groups = "drop"
+  )
+```
+
+```{r}
+ggplot(melanoma, aes(ulcer, time, fill = ulcer)) +
+  geom_boxplot(show.legend = FALSE) +
+  theme_minimal() +
+  labs(
+    title = "Survival/follow-up time by ulceration status",
+    x = "Ulceration",
+    y = "Time (days)"
+  )
+```
+
+```{r}
+ggplot(melanoma, aes(time, fill = ulcer)) +
+  geom_histogram(bins = 18, alpha = 0.75, position = "identity") +
+  facet_grid(sex ~ ulcer) +
+  theme_minimal() +
+  labs(title = "Time distribution by sex and ulceration status")
+```
+
+## Non-parametric comparison and correlation
+
+```{r}
+thickness_by_sex <- wilcox.test(
+  thickness ~ sex,
+  data = melanoma,
+  alternative = "two.sided",
+  conf.level = 0.95
+)
+thickness_by_sex
+
+thickness_time_correlation <- cor(
+  melanoma$thickness,
+  melanoma$time,
+  method = "spearman",
+  use = "complete.obs"
+)
+thickness_time_correlation
+```
+
+```{r}
+ggplot(melanoma, aes(time, thickness, color = ulcer)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "loess", se = FALSE) +
+  theme_minimal() +
+  labs(title = "Tumour thickness and observed time")
+```
+
+## Stratified hold-out split
+
+The original three-level status variable distinguishes melanoma death, survival and death from other causes. For this educational binary classification example, `melanoma_death` compares melanoma death with the combined `other_or_alive` group. That simplification is a limitation and should not be interpreted as a clinical endpoint definition.
+
+```{r}
+model_data <- melanoma %>%
+  select(melanoma_death, age, year, thickness, ulcer, sex)
+
+set.seed(1821)
+train_index <- createDataPartition(
+  model_data$melanoma_death,
+  p = 0.75,
+  list = FALSE
+)
+train_data <- model_data[train_index, ]
+test_data <- model_data[-train_index, ]
+```
+
+## Logistic regression
+
+```{r}
+control <- trainControl(
+  method = "repeatedcv",
+  number = 5,
+  repeats = 5,
+  classProbs = TRUE,
+  savePredictions = "final"
+)
+
+set.seed(1821)
+glm_model <- train(
+  melanoma_death ~ .,
+  data = train_data,
+  method = "glm",
+  family = binomial(),
+  trControl = control,
+  metric = "Accuracy"
+)
+
+coef(glm_model$finalModel)
+summary(glm_model$finalModel)
+```
+
+## Held-out classification evaluation
+
+```{r}
+glm_predictions <- predict(glm_model, newdata = test_data)
+glm_confusion <- confusionMatrix(glm_predictions, test_data$melanoma_death)
+glm_confusion
+```
+
+## Regression tree for tumour thickness
+
+The regression example uses the original predictors to estimate tumour thickness. The target is excluded from the predictor matrix to avoid a direct target duplicate.
+
+```{r}
+regression_data <- melanoma %>%
+  select(thickness, time, status, sex, age, year, ulcer)
+
+set.seed(1821)
+reg_index <- createDataPartition(
+  cut(regression_data$thickness, breaks = 5),
+  p = 0.75,
+  list = FALSE
+)
+reg_train <- regression_data[reg_index, ]
+reg_test <- regression_data[-reg_index, ]
+
+set.seed(1821)
+tree_model <- train(
+  thickness ~ .,
+  data = reg_train,
+  method = "rpart",
+  trControl = trainControl(method = "cv", number = 10),
+  tuneLength = 20
+)
+
+rpart.plot(tree_model$finalModel)
+tree_predictions <- predict(tree_model, newdata = reg_test)
+postResample(tree_predictions, reg_test$thickness)
+```
+
+## Scope
+
+This is an academic statistical-programming exercise using a historical teaching dataset. It is **not** a clinical decision-support model and the simplified binary outcome should not be used for medical interpretation.
+
+## Session information
+
+```{r}
+sessionInfo()
+```
