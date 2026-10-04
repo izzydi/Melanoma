@@ -1,29 +1,32 @@
-# Melanoma Data Analysis in R
+# Melanoma Statistical Analysis in R
 
-An exploratory and predictive analysis of the `melanoma` dataset from R's `boot` package. The project examines clinical variables associated with melanoma outcomes and demonstrates a structured statistical-analysis workflow in R.
+An academic statistical-analysis project using the `melanoma` dataset distributed with R's `boot` package.
 
-## Project overview
+## Primary workflow
 
-The analysis includes data preparation, factor recoding, frequency tables, descriptive statistics, visual exploration and model-oriented preprocessing. It also uses graphical tools to explore relationships among variables such as survival time, sex and ulceration status.
+[`melanoma_analysis.Rmd`](melanoma_analysis.Rmd) is the audited source. It combines descriptive analysis, non-parametric comparison, correlation, a stratified logistic-regression example and a regression tree for tumour thickness.
 
 ## Repository contents
 
-- [`melanoma_analysis.Rmd`](melanoma_analysis.Rmd) — complete R Markdown source analysis.
+- [`melanoma_analysis.Rmd`](melanoma_analysis.Rmd) — audited R Markdown source.
+- [`archive/legacy_assignment.Rmd`](archive/legacy_assignment.Rmd) — original coursework retained for provenance.
+- [`R-packages.txt`](R-packages.txt) — direct R dependencies.
+- [`.gitignore`](.gitignore) — local R artifacts.
 
-## Tools used
+## Audit improvements
 
-The project uses R packages including `boot`, `ggplot2`, `GGally`, `dplyr`, `caret` and `rpart.plot`.
+The original assignment contained a spelling error in the outcome recoding and stored `glm_model$coefnames` as if it were the coefficient values. The current source uses `coef(glm_model$finalModel)`, stratifies the hold-out split and documents the important limitation that the historical three-level status variable is simplified to a binary educational endpoint.
 
 ## Data
 
-The analysis uses the `melanoma` dataset distributed with the R `boot` package, so no external dataset file is required.
+No external file is needed: the analysis uses `boot::melanoma` directly.
 
 ## Reproducing the analysis
 
-1. Open `melanoma_analysis.Rmd` in RStudio.
-2. Install any missing packages listed at the beginning of the file.
-3. Run or knit the R Markdown document.
+1. Install packages listed in [`R-packages.txt`](R-packages.txt).
+2. Open `melanoma_analysis.Rmd` in RStudio.
+3. Run or knit the document from top to bottom.
 
 ## Scope
 
-This is an academic data-analysis project intended to demonstrate statistical programming and exploratory modelling rather than a clinical decision-support system.
+This is a statistical-programming portfolio project, **not** a clinical decision-support system. The binary outcome used in the modelling section is an explicit analytical simplification and should not be interpreted as a clinical endpoint definition.
